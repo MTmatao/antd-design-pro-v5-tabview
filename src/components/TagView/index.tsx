@@ -95,7 +95,6 @@ const TagView: React.FC = ({ children }) => {
     }
 
     setTags(tagsCopy);
-    return false;
   };
 
   return (
