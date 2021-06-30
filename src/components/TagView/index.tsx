@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RouteContext } from '@ant-design/pro-layout';
 import type { RouteContextType } from '@ant-design/pro-layout';
 import { history } from 'umi';
-import Tags from './tags';
+import Tags from './Tags';
 import styles from './index.less';
 
 export type TagsItemType = {
@@ -13,11 +13,16 @@ export type TagsItemType = {
   children: any;
 };
 
+interface IProps {
+  home: string;
+}
+
 /**
  * @component TagView 标签页组件
  */
-const TagView: React.FC = ({ children }) => {
-  const [tags, setTags] = useState<TagsItemType[]>([]);
+const TagView: React.FC<IProps> = ({ children, home }) => {
+  const [tagList, setTagList] = useState<TagsItemType[]>([]);
+  const [refresh, setRefresh] = useState(false);
 
   const routeContextRef = useRef<RouteContextType>();
 
@@ -29,11 +34,11 @@ const TagView: React.FC = ({ children }) => {
 
   // 初始化 visitedViews，设置project为首页
   const initTags = (routeContext: RouteContextType) => {
-    if (tags.length === 0 && routeContext.menuData) {
-      const firstTag = routeContext.menuData.filter((el) => el.path === '/welcome')[0];
+    if (tagList.length === 0 && routeContext.menuData) {
+      const firstTag = routeContext.menuData.filter((el) => el.path === home)[0];
       const title = firstTag.name;
       const path = firstTag.path;
-      setTags([
+      setTagList([
         {
           title,
           path,
@@ -45,35 +50,18 @@ const TagView: React.FC = ({ children }) => {
     }
   };
 
-  // 关闭标签
-  const handleCloseTag = (tag: TagsItemType) => {
-    // 判断关闭标签是否处于打开状态
-    const tagsCopy: TagsItemType[] = tags
-      .map((el, i) => {
-        if (el.path === tag.path) {
-          const path = tags[i - 1].path || '';
-          history.push(path);
-        }
-        return { ...el };
-      })
-      .filter((el) => el.path !== tag?.path);
-
-    setTags(tagsCopy);
-  };
-
   // 监听路由改变
   const handleOnChange = (routeContext: RouteContextType) => {
     const { currentMenu } = routeContext;
 
     // tags初始化
-    if (tags.length === 0) {
-      initTags(routeContext);
-      return false;
+    if (tagList.length === 0) {
+      return initTags(routeContext);
     }
 
     // 判断是否已打开过该页面
     let hasOpen = false;
-    const tagsCopy: TagsItemType[] = tags.map((item) => {
+    const tagsCopy: TagsItemType[] = tagList.map((item) => {
       if (currentMenu?.path === item.path) {
         hasOpen = true;
         return { ...item, actived: true };
@@ -93,8 +81,39 @@ const TagView: React.FC = ({ children }) => {
         actived: true,
       });
     }
+    return setTagList(tagsCopy);
+  };
 
-    setTags(tagsCopy);
+  // 关闭标签
+  const handleCloseTag = (tag: TagsItemType) => {
+    // 判断关闭标签是否处于打开状态
+    const tagsCopy: TagsItemType[] = tagList
+      .map((el, i) => {
+        if (el.path === tag.path) {
+          const path = tagList[i - 1].path || '';
+          history.push(path);
+        }
+        return { ...el };
+      })
+      .filter((el) => el.path !== tag?.path);
+
+    setTagList(tagsCopy);
+  };
+
+  // 关闭所有标签
+  const handleCloseAll = () => {
+    const tagsCopy: TagsItemType[] = tagList.filter((el) => el.path === home);
+    history.push(home);
+    setTagList(tagsCopy);
+  };
+
+  // 关闭其他标签
+  const handleCloseOther = (tag: TagsItemType) => {
+    const tagsCopy: TagsItemType[] = tagList.filter(
+      (el) => el.path === home || el.path === tag.path,
+    );
+    history.push({ pathname: tag?.path, query: tag?.query });
+    setTagList(tagsCopy);
   };
 
   return (
@@ -107,11 +126,16 @@ const TagView: React.FC = ({ children }) => {
         }}
       </RouteContext.Consumer>
       <div className={styles.tag_view}>
-        <div className={styles.tabs}>
-          <Tags tags={tags} handleCloseTag={handleCloseTag} />
+        <div className={styles.tags_container}>
+          <Tags
+            tagList={tagList}
+            handleCloseTag={handleCloseTag}
+            handleCloseAll={handleCloseAll}
+            handleCloseOther={handleCloseOther}
+          />
         </div>
       </div>
-      {tags.map((item) => {
+      {tagList.map((item) => {
         return (
           <div key={item.path} style={{ display: item.actived ? 'block' : 'none' }}>
             {item.children}
